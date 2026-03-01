@@ -1,0 +1,19 @@
+{
+  "name": "mobspecs",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "dev:web": "pnpm --filter @mobspecs/web dev",
+    "dev:worker": "pnpm --filter @mobspecs/agent-worker dev",
+    "dev:scheduler": "pnpm --filter @mobspecs/scheduler dev",
+    "test:smoke": "bash tests/smoke/route-coverage.sh",
+    "validate:stack": "bash infra/scripts/validate_stack.sh"
+  },
+  "devDependencies": {
+    "typescript": "5.6.3"
+  }
+}

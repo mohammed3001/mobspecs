@@ -1,0 +1,413 @@
+openapi: 3.1.0
+info:
+  title: Mobile Intelligence Platform API
+  version: 1.0.0
+  description: |
+    External and internal API contracts for the fully automated phone-spec platform.
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: http://localhost:3000/api/v1
+    description: Local
+
+tags:
+  - name: Auth
+  - name: Brands
+  - name: Phones
+  - name: Comparisons
+  - name: Reviews
+  - name: Articles
+  - name: SEO
+  - name: Translation
+  - name: Admin
+  - name: InternalAutomation
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /brands:
+    get:
+      tags: [Brands]
+      summary: List brands
+      responses:
+        '200':
+          description: Brand list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Brand'
+    post:
+      tags: [Admin, Brands]
+      summary: Create brand
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BrandCreateRequest'
+      responses:
+        '201':
+          description: Brand created
+
+  /phones:
+    get:
+      tags: [Phones]
+      summary: Search and filter phone models
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: brand
+          schema: { type: string }
+        - in: query
+          name: minPrice
+          schema: { type: number }
+        - in: query
+          name: maxPrice
+          schema: { type: number }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+      responses:
+        '200':
+          description: Phone search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPhones'
+    post:
+      tags: [Admin, Phones]
+      summary: Create a phone model
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PhoneCreateRequest'
+      responses:
+        '201':
+          description: Phone created
+
+  /phones/{phoneId}:
+    get:
+      tags: [Phones]
+      summary: Get phone details
+      parameters:
+        - in: path
+          name: phoneId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Phone detail payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhoneDetail'
+
+  /comparisons:
+    post:
+      tags: [Comparisons]
+      summary: Create comparison between phones
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneIds]
+              properties:
+                phoneIds:
+                  type: array
+                  minItems: 2
+                  maxItems: 4
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '201':
+          description: Comparison created
+
+  /reviews:
+    post:
+      tags: [Reviews]
+      summary: Submit review
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewCreateRequest'
+      responses:
+        '201':
+          description: Review submitted
+
+  /articles:
+    get:
+      tags: [Articles]
+      summary: List published articles
+      responses:
+        '200':
+          description: Article list
+    post:
+      tags: [Admin, Articles]
+      summary: Create article
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArticleCreateRequest'
+      responses:
+        '201':
+          description: Article created
+
+  /seo/analyze:
+    post:
+      tags: [SEO]
+      summary: Analyze SEO score for page payload
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SEOAnalyzeRequest'
+      responses:
+        '200':
+          description: SEO report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SEOAnalyzeResponse'
+
+  /translate:
+    post:
+      tags: [Translation]
+      summary: Translate a payload between Arabic and English
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sourceLang, targetLang, text]
+              properties:
+                sourceLang:
+                  type: string
+                  enum: [ar, en]
+                targetLang:
+                  type: string
+                  enum: [ar, en]
+                text:
+                  type: string
+      responses:
+        '200':
+          description: Translation output
+
+  /internal/agent/publish:
+    post:
+      tags: [InternalAutomation]
+      summary: Internal endpoint for AI agent publishing
+      security:
+        - hmacSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InternalPublishRequest'
+      responses:
+        '202':
+          description: Job accepted
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    hmacSignature:
+      type: apiKey
+      in: header
+      name: X-Agent-Signature
+
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        roles:
+          type: array
+          items: { type: string }
+
+    Brand:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        country: { type: string }
+
+    BrandCreateRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        country: { type: string }
+
+    PhoneCreateRequest:
+      type: object
+      required: [brandId, modelName, slug]
+      properties:
+        brandId: { type: string, format: uuid }
+        modelName: { type: string }
+        slug: { type: string }
+        releaseDate: { type: string, format: date }
+        specs:
+          type: array
+          items:
+            type: object
+            required: [specKey, value]
+            properties:
+              specKey: { type: string }
+              value: { type: string }
+
+    PhoneDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        brand:
+          $ref: '#/components/schemas/Brand'
+        modelName: { type: string }
+        slug: { type: string }
+        specs:
+          type: array
+          items:
+            type: object
+            properties:
+              key: { type: string }
+              value: { type: string }
+
+    PaginatedPhones:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PhoneDetail'
+        page: { type: integer }
+        totalPages: { type: integer }
+        totalItems: { type: integer }
+
+    ReviewCreateRequest:
+      type: object
+      required: [phoneId, rating, title, body]
+      properties:
+        phoneId: { type: string, format: uuid }
+        rating: { type: integer, minimum: 1, maximum: 10 }
+        title: { type: string }
+        body: { type: string }
+
+    ArticleCreateRequest:
+      type: object
+      required: [title, slug, body, categoryId]
+      properties:
+        title: { type: string }
+        slug: { type: string }
+        body: { type: string }
+        categoryId: { type: string, format: uuid }
+        locale:
+          type: string
+          enum: [en, ar]
+
+    SEOAnalyzeRequest:
+      type: object
+      required: [url, title, description, content]
+      properties:
+        url: { type: string }
+        title: { type: string }
+        description: { type: string }
+        content: { type: string }
+        locale:
+          type: string
+          enum: [en, ar]
+
+    SEOAnalyzeResponse:
+      type: object
+      properties:
+        score: { type: number, minimum: 0, maximum: 100 }
+        suggestions:
+          type: array
+          items: { type: string }
+        keywordCoverage:
+          type: array
+          items:
+            type: object
+            properties:
+              keyword: { type: string }
+              coverage: { type: number }
+
+    InternalPublishRequest:
+      type: object
+      required: [type, locale, payload]
+      properties:
+        type:
+          type: string
+          enum: [article, review, phoneUpdate, seoPatch]
+        locale:
+          type: string
+          enum: [ar, en]
+        payload:
+          type: object
+        idempotencyKey:
+          type: string
+
