@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  super_admin
+  editor
+  reviewer
+  translator
+  support
+  automation_agent
+  user
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  role      UserRole   @default(user)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  articles  Article[]
+  reviews   Review[]
+}
+
+model Brand {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  phones    PhoneModel[]
+}
+
+model PhoneModel {
+  id          String      @id @default(uuid())
+  brandId     String
+  modelName   String
+  slug        String      @unique
+  releaseDate DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  brand       Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  reviews     Review[]
+
+  @@index([brandId])
+}
+
+model Review {
+  id          String    @id @default(uuid())
+  phoneModelId String
+  authorId    String
+  rating      Int
+  title       String
+  body        String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  phone       PhoneModel @relation(fields: [phoneModelId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([phoneModelId])
+  @@index([authorId])
+}
+
+model Article {
+  id         String   @id @default(uuid())
+  authorId   String
+  title      String
+  slug       String   @unique
+  body       String
+  locale     String   @default("en")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([locale])
+}
